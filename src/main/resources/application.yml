@@ -1,0 +1,37 @@
+spring:
+  batch:
+    jdbc:
+      initialize-schema: always
+  flyway:
+    schemas: diffusion
+
+
+diffusion:
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      connection-timeout: 2500
+      data-source-properties:
+        currentSchema: diffusion
+      validation-timeout: 1000
+    password: my_test
+    type: com.zaxxer.hikari.HikariDataSource
+    url: jdbc:postgresql://localhost:5433/my_test?currentSchema=diffusion
+    username: my_test
+    validation-interval: 30000
+    validation-query: SELECT 1;
+
+preparation:
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      connection-timeout: 2500
+      data-source-properties:
+        currentSchema: preparation
+      validation-timeout: 1000
+    password: my_test
+    type: com.zaxxer.hikari.HikariDataSource
+    url: jdbc:postgresql://localhost:5433/my_test?currentSchema=preparation
+    username: my_test
+    validation-interval: 30000
+    validation-query: SELECT 1;

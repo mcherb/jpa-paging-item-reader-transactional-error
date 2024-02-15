@@ -1,0 +1,12 @@
+version: "3.9"
+
+services:
+  db-my_test_postgres:
+    image: postgres:latest
+    container_name: my_test_postgres
+    restart: on-failure
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: my_test
+      POSTGRES_PASSWORD: my_test

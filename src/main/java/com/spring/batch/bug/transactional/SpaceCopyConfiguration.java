@@ -20,6 +20,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.transaction.PlatformTransactionManager;
 
 import javax.persistence.EntityManagerFactory;
 import javax.sql.DataSource;
@@ -31,7 +32,7 @@ import static org.springframework.batch.repeat.RepeatStatus.FINISHED;
 @RequiredArgsConstructor
 public class SpaceCopyConfiguration {
 
-    @Value("${page.size:300}")
+    @Value("${page.size:102}")
     private final int pageSize;
 
     private final StepBuilderFactory stepBuilderFactory;
@@ -74,13 +75,14 @@ public class SpaceCopyConfiguration {
     }
 
     @Bean
-    ItemReader<Space> spaceDiffusionItemReader(EntityManagerFactory entityManagerFactory) {
+    ItemReader<Space> spaceDiffusionItemReader(@Qualifier("entityManagerFactory") EntityManagerFactory entityManagerFactory) {
         JpaNativeQueryProvider<Space> queryProvider = new JpaNativeQueryProvider<>();
         queryProvider.setSqlQuery(
                 """
                              select *
                              from space
                              where status = 'INACTIVE'
+                             order by id
                         """
         );
         queryProvider.setEntityClass(Space.class);
@@ -102,13 +104,14 @@ public class SpaceCopyConfiguration {
     }
 
     @Bean
-    Step spaceInactiveItemsStep() {
+    Step spaceInactiveItemsStep(@Qualifier("preparationTransactionManager") PlatformTransactionManager preparationTransactionManager) {
         return stepBuilderFactory
                 .get("spaceInactiveItemsStep")
                 .<Space, Space>chunk(pageSize)
                 .reader(spaceDiffusionItemReader(null))
                 .processor(spaceItemProcessor())
                 .writer(spacePreparationItemWriter(null))
+                .transactionManager(preparationTransactionManager)
                 .build();
     }
 
@@ -118,7 +121,7 @@ public class SpaceCopyConfiguration {
                 .incrementer(new RunIdIncrementer())
                 .start(cleanPreparation(null, null))
                 .next(cleanDiffusionNames(null))
-                .next(spaceInactiveItemsStep())
+                .next(spaceInactiveItemsStep(null))
                 .build();
     }
 }

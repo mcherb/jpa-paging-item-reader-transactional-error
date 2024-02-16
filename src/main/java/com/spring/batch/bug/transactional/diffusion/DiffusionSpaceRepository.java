@@ -11,4 +11,6 @@ public interface DiffusionSpaceRepository extends JpaRepository<Space, String> {
     @Modifying
     @Query("update Space s set s.name = null ")
     void cleanNames();
+
+    long countAllByNameIsNotNull();
 }

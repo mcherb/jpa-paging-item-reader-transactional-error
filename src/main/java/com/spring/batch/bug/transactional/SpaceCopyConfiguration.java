@@ -4,6 +4,7 @@ import com.spring.batch.bug.transactional.diffusion.DiffusionSpaceRepository;
 import com.spring.batch.bug.transactional.model.Space;
 import com.spring.batch.bug.transactional.preparation.PreparationSpaceRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.flywaydb.core.Flyway;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
@@ -27,12 +28,13 @@ import javax.sql.DataSource;
 
 import static org.springframework.batch.repeat.RepeatStatus.FINISHED;
 
+@Slf4j
 @Configuration
 @EnableBatchProcessing
 @RequiredArgsConstructor
 public class SpaceCopyConfiguration {
 
-    @Value("${page.size:102}")
+    @Value("${page.size:100}")
     private final int pageSize;
 
     private final StepBuilderFactory stepBuilderFactory;
@@ -92,6 +94,7 @@ public class SpaceCopyConfiguration {
                 .queryProvider(queryProvider)
                 .entityManagerFactory(entityManagerFactory)
                 .pageSize(pageSize)
+                //.transacted(false)
                 .build();
     }
 
@@ -116,12 +119,34 @@ public class SpaceCopyConfiguration {
     }
 
     @Bean
+    Step loggingStep(DiffusionSpaceRepository diffusionSpaceRepository, PreparationSpaceRepository preparationSpaceRepository) {
+        return stepBuilderFactory.get("cleanDiffusionNames")
+                .tasklet((contribution, chunkContext) -> {
+
+                    log.info("#################################################");
+
+                    long all = diffusionSpaceRepository.count();
+                    long changedNames = diffusionSpaceRepository.countAllByNameIsNotNull();
+                    log.info("Total in preparation : [{}], page size is [{}]", preparationSpaceRepository.count(), pageSize);
+                    log.info("Total in diffusion : [{}]", all);
+                    log.info("Changed names in diffusion : [{}], not modified [{}]", changedNames, all - changedNames);
+
+                    log.info("#################################################");
+
+
+                    return FINISHED;
+                })
+                .build();
+    }
+
+    @Bean
     Job copyJob() {
         return jobBuilderFactory.get("copyJob")
                 .incrementer(new RunIdIncrementer())
                 .start(cleanPreparation(null, null))
                 .next(cleanDiffusionNames(null))
                 .next(spaceInactiveItemsStep(null))
+                .next(loggingStep(null, null))
                 .build();
     }
 }
